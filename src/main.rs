@@ -4,14 +4,16 @@ mod entry;
 mod store;
 mod clipboard;
 mod prompt;
+mod session;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use crate::config::Config;
-use crate::crypto::{unlock_master_key, generate_new_config};
+use crate::crypto::generate_new_config;
 use crate::store::{load_entry, save_entry, ensure_store_dirs};
 use crate::entry::Entry;
 use crate::clipboard::copy_to_clipboard;
 use crate::prompt::{prompt_password_hidden, prompt_string};
+use crate::session::get_master_key_with_cache;
 use time::OffsetDateTime;
 
 #[derive(Parser, Debug)]
@@ -99,10 +101,9 @@ fn cmd_init() -> anyhow::Result<()> {
 fn cmd_add(path: &str) -> anyhow::Result<()> {
     ensure_store_dirs(path)?;
 
-    // 1. Load config & unlock MK
+    // 1. Load config & get MK via cache
     let config = Config::load()?;
-    let master_password = prompt_password_hidden("Master password: ")?;
-    let mk = unlock_master_key(&master_password, &config)?;
+    let mk = get_master_key_with_cache(&config)?;
 
     // 2. Prompt entry fields
     let title = path.to_string();
@@ -137,8 +138,7 @@ fn cmd_add(path: &str) -> anyhow::Result<()> {
 
 fn cmd_show(path: &str, password_only: bool, json: bool) -> anyhow::Result<()> {
     let config = Config::load()?;
-    let master_password = prompt_password_hidden("Master password: ")?;
-    let mk = unlock_master_key(&master_password, &config)?;
+    let mk = get_master_key_with_cache(&config)?;
 
     let entry = load_entry(path, &mk)?;
 
@@ -172,8 +172,7 @@ fn cmd_show(path: &str, password_only: bool, json: bool) -> anyhow::Result<()> {
 
 fn cmd_clip(path: &str, field: ClipField) -> anyhow::Result<()> {
     let config = Config::load()?;
-    let master_password = prompt_password_hidden("Master password: ")?;
-    let mk = unlock_master_key(&master_password, &config)?;
+    let mk = get_master_key_with_cache(&config)?;
 
     let entry = load_entry(path, &mk)?;
 
