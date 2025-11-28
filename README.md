@@ -1,18 +1,19 @@
 # pm — Minimal Password Manager (Rust, CLI)
 
-Локальный и безопасный менеджер паролей (Linux / macOS / Windows).
+A local and secure password manager for **Linux / macOS / Windows**.
 
-## 🔐 Возможности
-- Локальное хранение (каждый сервис — отдельный `.enc`)
-- Шифрование XChaCha20-Poly1305 (MK защищён Argon2id)
-- Кэш Master Key на 5 минут
-- OTP/TOTP (совместим с Google Auth, Aegis, GitHub и др.)
-- Клипборд в GUI-терминале (`pm clip`, `pm otp clip`)
-- Дерево записей (`pm ls`)
+## 🔐 Features
+- **Local storage** (each service = separate `.enc` file)
+- **Encryption**: XChaCha20-Poly1305 (MK protected via Argon2id)
+- **Master Key cache** (5 minutes TTL)
+- **OTP/TOTP support** (compatible with Google Authenticator, Aegis, GitHub, etc.)
+- **Clipboard integration** in GUI terminal (`pm clip`, `pm otp clip`)
+- **Tree view listing** (`pm ls`)
 
----
+📘 **Русская версия README:** see  
+`(look for ru README.md file in repo or releases assets)`
 
-## 📦 Установка одной командой
+## 📦 One-command installation (no Rust required)
 
 ### 🐧 Linux
 ```bash
@@ -29,83 +30,65 @@ curl -sSfL https://raw.githubusercontent.com/Avdushin/pm/main/scripts/install-ma
 irm https://github.com/Avdushin/pm/releases/latest/download/install.ps1 | iex
 ```
 
-После установки проверь команду:
+After installation, verify:
 
 ```bash
 pm --help
 ```
 
-## 🧰 Использование
+## 🧰 Usage
 
-Добавить хранилище:
-
+### Initialize password store
 ```bash
 pm init
 ```
 
-Добавить запись (если пароль пустой → сгенерируется):
-
+### Add a password entry  
+(leave password empty to auto-generate)
 ```bash
 pm add work/github
 ```
 
-Просмотреть:
-
+### View an entry
 ```bash
 pm show work/github
 pm show work/github --password-only
 pm show work/github --json
 ```
 
-Список:
-
+### List entries
 ```bash
 pm ls
 pm ls work
 ```
 
-Копировать пароль/логин:
-
+### Copy password or username to clipboard
 ```bash
 pm clip work/github
 pm clip work/github --field username
 ```
 
-Добавить OTP (вставить base32 или otpauth://):
-
+### Add OTP (Base32 or `otpauth://` link)
 ```bash
 pm otp add work/github
 ```
 
-Получить/копировать TOTP-код:
-
+### Get or copy current TOTP code
 ```bash
 pm otp show work/github
 pm otp clip work/github
 ```
 
-Создать бэкап (`.zip` по умолчанию):
-
+### Create backup (default: `.zip`)
 ```bash
 pm backup create
 pm backup create my_backup
 pm backup create my_backup.tar.gz
 ```
 
-Заблокировать сессию (удалить кэш MK):
-
+### Lock session (delete cached Master Key)
 ```bash
 pm lock
+# or
 pm backup lock
 ```
-
----
-
-## 🤷 Формат записи
-
-`.enc`:
-
-```json
-{ "version":1, "nonce":"<b64>", "ciphertext":"<b64>" }
-```
-
