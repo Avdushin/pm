@@ -67,8 +67,8 @@ fn try_pipe_to(cmd: &str, args: &[&str], value: &str) -> Result<()> {
 /// Не-Linux (Windows/macOS и прочие): используем copypasta.
 #[cfg(not(target_os = "linux"))]
 pub fn copy_to_clipboard(value: &str) -> Result<()> {
-    let mut ctx = ClipboardContext::new()
-        .map_err(|e| anyhow!("Failed to initialize clipboard: {e}"))?;
+    let mut ctx =
+        ClipboardContext::new().map_err(|e| anyhow!("Failed to initialize clipboard: {e}"))?;
 
     ctx.set_contents(value.to_string())
         .map_err(|e| anyhow!("Failed to copy to clipboard: {e}"))?;

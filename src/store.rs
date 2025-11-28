@@ -1,4 +1,4 @@
-use crate::crypto::{MasterKey, encrypt_entry};
+use crate::crypto::{MasterKey, decrypt_entry, encrypt_entry};
 use crate::entry::Entry;
 use anyhow::Context;
 use std::path::{Path, PathBuf};
@@ -37,7 +37,6 @@ pub fn save_entry(path: &str, entry: &Entry, master_key: &MasterKey) -> anyhow::
     let json = serde_json::to_vec(entry)?;
     let (nonce_b64, ct_b64) = encrypt_entry(master_key, &json)?;
 
-    // Простой формат файла: JSON с nonce + ciphertext
     #[derive(serde::Serialize)]
     struct FileEntry<'a> {
         version: u32,
@@ -61,7 +60,6 @@ pub fn load_entry(path: &str, master_key: &MasterKey) -> anyhow::Result<Entry> {
     let data = std::fs::read_to_string(&file_path)
         .with_context(|| format!("cannot read entry file {}", file_path.display()))?;
 
-    #[allow(dead_code)]
     #[derive(serde::Deserialize)]
     struct FileEntry {
         version: u32,
@@ -70,7 +68,7 @@ pub fn load_entry(path: &str, master_key: &MasterKey) -> anyhow::Result<Entry> {
     }
 
     let fe: FileEntry = serde_json::from_str(&data)?;
-    let decrypted = crate::crypto::decrypt_entry(master_key, &fe.nonce, &fe.ciphertext)?;
+    let decrypted = decrypt_entry(master_key, &fe.nonce, &fe.ciphertext)?;
     let entry: Entry = serde_json::from_slice(&decrypted)?;
     Ok(entry)
 }

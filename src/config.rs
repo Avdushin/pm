@@ -1,20 +1,20 @@
+use crate::store::store_root;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use crate::store::store_root;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct KdfParams {
-    pub algo: String,          // "argon2id"
+    pub algo: String, // "argon2id"
     pub memory_mib: u32,
     pub iterations: u32,
     pub parallelism: u32,
-    pub salt: String,          // base64
+    pub salt: String, // base64
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EncConfig {
-    pub algo: String,              // "xchacha20-poly1305"
-    pub master_key_nonce: String,  // base64
+    pub algo: String,                 // "xchacha20-poly1305"
+    pub master_key_nonce: String,     // base64
     pub encrypted_master_key: String, // base64
 }
 

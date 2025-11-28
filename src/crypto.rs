@@ -1,15 +1,13 @@
-use crate::config::{Config, KdfParams, EncConfig};
-use argon2::{Argon2, Algorithm, Params, Version};
-use rand::RngCore;
-use chacha20poly1305::{
-    aead::{Aead, AeadCore, OsRng},
-    KeyInit,
-    XChaCha20Poly1305,
-    XNonce,
-};
-use base64::{engine::general_purpose, Engine as _};
-use thiserror::Error;
+use crate::config::{Config, EncConfig, KdfParams};
 use anyhow::anyhow;
+use argon2::{Algorithm, Argon2, Params, Version};
+use base64::{Engine as _, engine::general_purpose};
+use chacha20poly1305::{
+    KeyInit, XChaCha20Poly1305, XNonce,
+    aead::{Aead, AeadCore, OsRng},
+};
+use rand::RngCore;
+use thiserror::Error;
 
 pub type MasterKey = [u8; 32];
 
@@ -76,21 +74,18 @@ fn derive_kek(master_password: &str, kdf: &KdfParams) -> anyhow::Result<[u8; 32]
     let salt_bytes = general_purpose::STANDARD.decode(&kdf.salt)?;
 
     let params = Params::new(
-        kdf.memory_mib * 1024,  // m_cost в KiB
+        kdf.memory_mib * 1024, // m_cost в KiB
         kdf.iterations,
         kdf.parallelism,
-        Some(32),               // длина ключа
-    ).map_err(|e| anyhow!("argon2 params error: {e}"))?;
+        Some(32), // длина ключа
+    )
+    .map_err(|e| anyhow!("argon2 params error: {e}"))?;
 
     let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
     let mut out = [0u8; 32];
     argon2
-        .hash_password_into(
-            master_password.as_bytes(),
-            &salt_bytes,
-            &mut out,
-        )
+        .hash_password_into(master_password.as_bytes(), &salt_bytes, &mut out)
         .map_err(|e| anyhow!("argon2 error: {e}"))?;
 
     Ok(out)
@@ -116,7 +111,11 @@ fn encrypt_with_key(key_bytes: &[u8; 32], plaintext: &[u8]) -> anyhow::Result<(S
 }
 
 /// Дешифрование 32-байтного master key из nonce/ciphertext.
-fn decrypt_with_key(key_bytes: &[u8; 32], nonce_b64: &str, ct_b64: &str) -> Result<MasterKey, CryptoError> {
+fn decrypt_with_key(
+    key_bytes: &[u8; 32],
+    nonce_b64: &str,
+    ct_b64: &str,
+) -> Result<MasterKey, CryptoError> {
     let key = chacha20poly1305::Key::from_slice(key_bytes);
     let cipher = XChaCha20Poly1305::new(key);
 
@@ -148,7 +147,11 @@ pub fn encrypt_entry(master_key: &MasterKey, data: &[u8]) -> anyhow::Result<(Str
 }
 
 /// Дешифрование JSON-записи master key'ом.
-pub fn decrypt_entry(master_key: &MasterKey, nonce_b64: &str, ct_b64: &str) -> anyhow::Result<Vec<u8>> {
+pub fn decrypt_entry(
+    master_key: &MasterKey,
+    nonce_b64: &str,
+    ct_b64: &str,
+) -> anyhow::Result<Vec<u8>> {
     let key = chacha20poly1305::Key::from_slice(master_key);
     let cipher = XChaCha20Poly1305::new(key);
 
@@ -163,7 +166,12 @@ pub fn decrypt_entry(master_key: &MasterKey, nonce_b64: &str, ct_b64: &str) -> a
 }
 
 /// Простая генерация пароля (позже можно сделать более кастомизируемой).
-pub fn generate_password(len: usize, upper: bool, lower: bool, digits: bool) -> anyhow::Result<String> {
+pub fn generate_password(
+    len: usize,
+    upper: bool,
+    lower: bool,
+    digits: bool,
+) -> anyhow::Result<String> {
     let mut chars = String::new();
     if upper {
         chars.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ");

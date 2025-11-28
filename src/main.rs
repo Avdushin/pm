@@ -1,19 +1,21 @@
+mod backup;
+mod clipboard;
 mod config;
 mod crypto;
 mod entry;
-mod store;
-mod clipboard;
 mod prompt;
 mod session;
+mod store;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use crate::backup::backup_create;
+use crate::clipboard::copy_to_clipboard;
 use crate::config::Config;
 use crate::crypto::generate_new_config;
-use crate::store::{load_entry, save_entry, ensure_store_dirs};
 use crate::entry::Entry;
-use crate::clipboard::copy_to_clipboard;
 use crate::prompt::{prompt_password_hidden, prompt_string};
 use crate::session::get_master_key_with_cache;
+use crate::store::{ensure_store_dirs, load_entry, save_entry, store_root};
+use clap::{Parser, Subcommand, ValueEnum};
 use time::OffsetDateTime;
 
 #[derive(Parser, Debug)]
@@ -51,6 +53,25 @@ enum Commands {
         #[arg(long, value_enum)]
         field: Option<ClipField>,
     },
+    /// Backup the whole store
+    Backup {
+        #[command(subcommand)]
+        cmd: BackupCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum BackupCommands {
+    /// Create backup archive
+    Create {
+        /// Optional backup filename
+        ///
+        /// Примеры:
+        ///   pm backup create
+        ///   pm backup create my_backup
+        ///   pm backup create my_backup.zip
+        file: Option<String>,
+    },
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -65,25 +86,28 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Init => cmd_init()?,
         Commands::Add { path } => cmd_add(&path)?,
-        Commands::Show { path, password_only, json } => {
-            cmd_show(&path, password_only, json)?
-        }
-        Commands::Clip { path, field } => {
-            cmd_clip(&path, field.unwrap_or(ClipField::Password))?
-        }
+        Commands::Show {
+            path,
+            password_only,
+            json,
+        } => cmd_show(&path, password_only, json)?,
+        Commands::Clip { path, field } => cmd_clip(&path, field.unwrap_or(ClipField::Password))?,
+        Commands::Backup { cmd } => match cmd {
+            BackupCommands::Create { file } => backup_create(file)?,
+        },
     }
 
     Ok(())
 }
 
 fn cmd_init() -> anyhow::Result<()> {
-    let store_root = store::store_root()?;
-    if store_root.exists() {
-        println!("Store already exists at: {}", store_root.display());
+    let root = store_root()?;
+    if root.exists() {
+        println!("Store already exists at: {}", root.display());
         return Ok(());
     }
 
-    std::fs::create_dir_all(&store_root)?;
+    std::fs::create_dir_all(&root)?;
     let master_password = prompt_password_hidden("New master password: ")?;
     let confirm = prompt_password_hidden("Confirm master password: ")?;
     if master_password != confirm {
@@ -91,21 +115,19 @@ fn cmd_init() -> anyhow::Result<()> {
     }
 
     let config = generate_new_config(&master_password)?;
-    let config_path = config::config_path()?;
-    config::save_config(&config, &config_path)?;
+    let config_path = crate::config::config_path()?;
+    crate::config::save_config(&config, &config_path)?;
 
-    println!("Initialized store at {}", store_root.display());
+    println!("Initialized store at {}", root.display());
     Ok(())
 }
 
 fn cmd_add(path: &str) -> anyhow::Result<()> {
     ensure_store_dirs(path)?;
 
-    // 1. Load config & get MK via cache
     let config = Config::load()?;
     let mk = get_master_key_with_cache(&config)?;
 
-    // 2. Prompt entry fields
     let title = path.to_string();
     let username = prompt_string("Username (optional): ")?;
     let password = prompt_password_hidden("Password (leave empty to generate): ")?;
@@ -122,7 +144,11 @@ fn cmd_add(path: &str) -> anyhow::Result<()> {
     let entry = Entry {
         version: 1,
         title,
-        username: if username.is_empty() { None } else { Some(username) },
+        username: if username.is_empty() {
+            None
+        } else {
+            Some(username)
+        },
         password,
         url: if url.is_empty() { None } else { Some(url) },
         notes: if notes.is_empty() { None } else { Some(notes) },
