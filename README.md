@@ -10,8 +10,7 @@ A local and secure password manager for **Linux / macOS / Windows**.
 - **Clipboard integration** in GUI terminal (`pm clip`, `pm otp clip`)
 - **Tree view listing** (`pm ls`)
 
-📘 **Русская версия README:** see  
-`(look for ru README.md file in repo or releases assets)`
+📘 **[Русская версия README](https://github.com/Avdushin/pm/blob/main/docs/ru/README.md)** 
 
 ## 📦 One-command installation (no Rust required)
 
@@ -84,11 +83,4 @@ pm otp clip work/github
 pm backup create
 pm backup create my_backup
 pm backup create my_backup.tar.gz
-```
-
-### Lock session (delete cached Master Key)
-```bash
-pm lock
-# or
-pm backup lock
 ```
