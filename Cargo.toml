@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Avdushin<itsdobro@gmail.com>"]
 
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
@@ -19,3 +20,7 @@ dirs = "5"
 thiserror = "1"
 anyhow = "1"
 copypasta = "0.10"
+tar = "0.4"
+flate2 = "1"
+zip = { version = "0.6" }
+walkdir = "2"
