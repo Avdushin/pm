@@ -14,7 +14,7 @@ use crate::crypto::generate_new_config;
 use crate::entry::Entry;
 use crate::prompt::{prompt_password_hidden, prompt_string};
 use crate::session::get_master_key_with_cache;
-use crate::store::{ensure_store_dirs, load_entry, save_entry, store_root};
+use crate::store::{ensure_store_dirs, load_entry, save_entry, store_root, list_entries};
 use clap::{Parser, Subcommand, ValueEnum};
 use time::OffsetDateTime;
 
@@ -29,11 +29,13 @@ struct Cli {
 enum Commands {
     /// Initialize password store
     Init,
+
     /// Add a new entry
     Add {
         /// Path like work/github
         path: String,
     },
+
     /// Show entry
     Show {
         /// Path like work/github
@@ -45,6 +47,7 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+
     /// Copy field to clipboard
     Clip {
         /// Path like work/github
@@ -53,6 +56,17 @@ enum Commands {
         #[arg(long, value_enum)]
         field: Option<ClipField>,
     },
+
+    /// List entries (like `pass ls`)
+    ///
+    /// Примеры:
+    ///   pm ls
+    ///   pm ls work
+    Ls {
+        /// Optional prefix (folder), e.g. "work" or "personal"
+        prefix: Option<String>,
+    },
+
     /// Backup the whole store
     Backup {
         #[command(subcommand)]
@@ -63,13 +77,13 @@ enum Commands {
 #[derive(Subcommand, Debug)]
 enum BackupCommands {
     /// Create backup archive
+    ///
+    /// Примеры:
+    ///   pm backup create
+    ///   pm backup create my_backup
+    ///   pm backup create my_backup.zip
     Create {
         /// Optional backup filename
-        ///
-        /// Примеры:
-        ///   pm backup create
-        ///   pm backup create my_backup
-        ///   pm backup create my_backup.zip
         file: Option<String>,
     },
 }
@@ -91,7 +105,10 @@ fn main() -> anyhow::Result<()> {
             password_only,
             json,
         } => cmd_show(&path, password_only, json)?,
-        Commands::Clip { path, field } => cmd_clip(&path, field.unwrap_or(ClipField::Password))?,
+        Commands::Clip { path, field } => {
+            cmd_clip(&path, field.unwrap_or(ClipField::Password))?
+        }
+        Commands::Ls { prefix } => cmd_ls(prefix.as_deref())?,
         Commands::Backup { cmd } => match cmd {
             BackupCommands::Create { file } => backup_create(file)?,
         },
@@ -139,7 +156,8 @@ fn cmd_add(path: &str) -> anyhow::Result<()> {
     let url = prompt_string("URL (optional): ")?;
     let notes = prompt_string("Notes (optional): ")?;
 
-    let now = OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339)?;
+    let now =
+        OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339)?;
 
     let entry = Entry {
         version: 1,
@@ -215,6 +233,34 @@ fn cmd_clip(path: &str, field: ClipField) -> anyhow::Result<()> {
             ClipField::Username => "Username",
         }
     );
+
+    Ok(())
+}
+
+fn cmd_ls(prefix: Option<&str>) -> anyhow::Result<()> {
+    let entries = list_entries()?;
+
+    if entries.is_empty() {
+        // Просто молчим — как `pass ls`, или можно:
+        // println!("No entries.");
+        return Ok(());
+    }
+
+    match prefix {
+        None => {
+            for e in entries {
+                println!("{e}");
+            }
+        }
+        Some(pref) => {
+            let pref_slash = format!("{pref}/");
+            for e in entries {
+                if e == pref || e.starts_with(&pref_slash) {
+                    println!("{e}");
+                }
+            }
+        }
+    }
 
     Ok(())
 }
