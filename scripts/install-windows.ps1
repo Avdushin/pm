@@ -1,32 +1,49 @@
 param(
+    # Куда ставить pm.exe (по умолчанию .cargo\bin, т.к. часто уже в PATH)
     [string]$InstallDir = "$env:USERPROFILE\.cargo\bin"
 )
 
-Write-Host "==> Building pm (release)..." -ForegroundColor Cyan
-cargo build --release
+$ErrorActionPreference = "Stop"
+
+Write-Host "==> pm Windows installer" -ForegroundColor Cyan
+Write-Host "Install directory: $InstallDir" -ForegroundColor Cyan
 
 if (!(Test-Path $InstallDir)) {
     Write-Host "==> Creating install directory: $InstallDir" -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
 
-$source = "target\release\pm.exe"
-$dest = Join-Path $InstallDir "pm.exe"
+$binaryUrl  = "https://github.com/Avdushin/pm/releases/latest/download/pm-windows-amd64.exe"
+$binaryPath = Join-Path $InstallDir "pm.exe"
 
-if (!(Test-Path $source)) {
-    Write-Host "❌ Could not find built binary at $source" -ForegroundColor Red
-    exit 1
+Write-Host "==> Downloading pm.exe from:" -ForegroundColor Cyan
+Write-Host "    $binaryUrl" -ForegroundColor DarkCyan
+
+Invoke-WebRequest -UseBasicParsing -Uri $binaryUrl -OutFile $binaryPath
+
+Write-Host "✅ pm.exe downloaded to $binaryPath" -ForegroundColor Green
+
+# Добавляем InstallDir в PATH (User), если его нет
+$pathUser  = [Environment]::GetEnvironmentVariable("PATH", "User")
+$entries   = $pathUser -split ';' | Where-Object { $_ -ne "" }
+
+if ($entries -notcontains $InstallDir) {
+    Write-Host "==> Adding $InstallDir to user PATH" -ForegroundColor Cyan
+
+    if ([string]::IsNullOrEmpty($pathUser)) {
+        $newPath = $InstallDir
+    } else {
+        $newPath = "$InstallDir;$pathUser"
+    }
+
+    [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
+    Write-Host "✅ PATH updated for current user." -ForegroundColor Green
+    Write-Host "   Перезапусти PowerShell/Terminal, чтобы PATH обновился." -ForegroundColor Yellow
+}
+else {
+    Write-Host "✅ $InstallDir уже есть в PATH (User)" -ForegroundColor Green
 }
 
-Copy-Item -Path $source -Destination $dest -Force
-
-Write-Host "✅ pm.exe installed to $InstallDir" -ForegroundColor Green
-
-$pathEntries = $env:PATH -split ';'
-if (-not ($pathEntries -contains $InstallDir)) {
-    Write-Host "⚠️  $InstallDir is not in PATH." -ForegroundColor Yellow
-    Write-Host "   Add it via System Properties → Environment Variables, or run:" -ForegroundColor Yellow
-    Write-Host "   [Environment]::SetEnvironmentVariable('PATH', `"$InstallDir;`$env:PATH`", 'User')" -ForegroundColor Yellow
-} else {
-    Write-Host "✅ $InstallDir is already in PATH" -ForegroundColor Green
-}
+Write-Host ""
+Write-Host "Done. Open a new PowerShell window and run:" -ForegroundColor Green
+Write-Host "  pm --help" -ForegroundColor Green
